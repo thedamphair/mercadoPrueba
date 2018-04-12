@@ -1,10 +1,10 @@
 let request = require('request')
 let productos = []
 
-function searchProduct(id) {
+function setRequest(url) {
   return new Promise((resolve, reject) => {
     let options = {
-      uri: 'https://api.mercadolibre.com/items/'+id,
+      uri: url,
       method: 'GET',
       json: true
     }
@@ -16,22 +16,37 @@ function searchProduct(id) {
         reject('HTTP Error: '+response.statusCode+' - '+response.statusMessage+'\n'+body)
       }
       else {
-        let pictures = []
-        for (const picture of body.pictures) {
+        resolve(body)
+      }
+    })
+  })
+}
+
+function searchProduct(id) {
+  return new Promise((resolve, reject)=> {
+    let url = 'https://api.mercadolibre.com/items/'+id
+    Promise.all([
+      setRequest(url),
+      setRequest(url+'/description')
+    ])
+    .then(success => {
+      let pictures = []
+        for (const picture of success[0].pictures) {
           pictures.push({url: picture.url})
         }
         productos.push({
-          id: body.id,
-          title: body.title,
-          price: body.price,
-          currency_id: body.currency_id,
-          permalink: body.permalink,
-          thumbnail: body.thumbnail,
+          id: success[0].id,
+          title: success[0].title,
+          price: success[0].price,
+          currency_id: success[0].currency_id,
+          permalink: success[0].permalink,
+          thumbnail: success[0].thumbnail,
           pictures,
-          descriptions: body.descriptions
+          descriptions: success[1].plain_text
         })
         resolve(productos)
-      }
+    }, err => {
+      reject(err)
     })
   })
 }
